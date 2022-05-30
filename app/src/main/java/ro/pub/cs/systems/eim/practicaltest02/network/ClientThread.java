@@ -1,0 +1,77 @@
+package ro.pub.cs.systems.eim.practicaltest02.network;
+
+import android.util.Log;
+import android.widget.TextView;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+
+import ro.pub.cs.systems.eim.practicaltest02.general.Constants;
+import ro.pub.cs.systems.eim.practicaltest02.general.Utilites;
+
+public class ClientThread extends Thread {
+
+    private String address;
+    private int port;
+    private String informationType;
+    private TextView clientDisplayedValueTextView;
+
+    private Socket socket;
+
+    public ClientThread(String address, int port, String desiredInfo, TextView clientDisplayedValueTextView) {
+        this.address = address;
+        this.port = port;
+        this.informationType = desiredInfo;
+        this.clientDisplayedValueTextView = clientDisplayedValueTextView;
+    }
+
+    @Override
+    public void run() {
+        try {
+            socket = new Socket(address, port);
+            if (socket == null) {
+                Log.e(Constants.TAG, "[CLIENT THREAD] Could not create socket!");
+                return;
+            }
+            BufferedReader bufferedReader = Utilites.getReader(socket);
+            PrintWriter printWriter = Utilites.getWriter(socket);
+            if (bufferedReader == null || printWriter == null) {
+                Log.e(Constants.TAG, "[CLIENT THREAD] Buffered Reader / Print Writer are null!");
+                return;
+            }
+
+            printWriter.println(informationType);
+            printWriter.flush();
+
+            String rate;
+            while ((rate = bufferedReader.readLine()) != null) {
+                final String finalizedRate = rate;
+                clientDisplayedValueTextView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        clientDisplayedValueTextView.setText(finalizedRate);
+                    }
+                });
+            }
+
+        } catch(IOException ioException) {
+            Log.e(Constants.TAG, "[CLIENT THREAD] An exception has occurred: " + ioException.getMessage());
+            if (Constants.DEBUG) {
+                ioException.printStackTrace();
+            }
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ioException) {
+                    Log.e(Constants.TAG, "[CLIENT THREAD] An exception has occurred: " + ioException.getMessage());
+                    if (Constants.DEBUG) {
+                        ioException.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+}
